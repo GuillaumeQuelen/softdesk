@@ -19,3 +19,11 @@ class UserSerializer(serializers.ModelSerializer):
                 "L'inscription nécessite d'avoir au moins 15 ans (RGPD)."
             )
         return value
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        user = super().update(instance, validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
+        return user
