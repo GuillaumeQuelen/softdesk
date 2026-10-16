@@ -48,3 +48,8 @@ des contributeurs). Seul l'auteur d'une issue peut la réassigner.
 - A04 : les utilisateurs doivent avoir 15 ans (conception RGPD)
 - A05 : les erreurs de l'API exposent la configuration (DEBUG = True)
 - A07 : les tokens JWT de longue durée peuvent être volés
+
+
+## RGPD
+
+Suppression d’un compte (droit à l’oubli). Les projets d’un utilisateur sont supprimés avec lui (CASCADE). En revanche, ses issues et ses commentaires sont conservés sans auteur (SET_NULL), pour que les autres contributeurs ne perdent ni le suivi des bugs ni leurs propres commentaires. Une issue assignée à un utilisateur supprimé redevient non assignée.
