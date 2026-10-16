@@ -1,55 +1,96 @@
 # SoftDesk Support
 
-API RESTful de suivi de tickets techniques (projets, contributeurs, issues, commentaires), construite avec Django REST Framework.
-
-## Prérequis
-
-- Python 3.12
-- Pipenv
+API RESTful de suivi de problèmes techniques, développée avec Django REST Framework.
+Les utilisateurs créent des projets, y invitent des contributeurs, signalent des
+issues (bugs, fonctionnalités, tâches) et les commentent.
 
 ## Installation
+
+Prérequis : Python 3.12 et Pipenv.
 
 ```bash
 git clone https://github.com/GuillaumeQuelen/softdesk.git
 cd softdesk
 pipenv install
-pipenv shell
+cp .env.example .env
+```
+
+Générer une clé secrète et la coller dans `.env`, entre apostrophes :
+
+```bash
+pipenv run python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+Puis créer la base :
+
+```bash
+pipenv run python manage.py migrate
 ```
 
 ## Lancement
 
 ```bash
-python manage.py migrate
-python manage.py runserver
+pipenv run python manage.py runserver
 ```
 
-L'API est alors disponible sur http://127.0.0.1:8000/
+L'API est disponible sur `http://127.0.0.1:8000/api/`.
 
+## Authentification
 
-## Cas d'utilisation principal
----
-Un développeur crée un projet (back-end, front-end, iOS ou Android).
-Il invite d'autres développeurs à y contribuer (POST /contributors/).
-Les contributeurs voient le projet et peuvent créer des issues 
-(bugs, features, tasks) et y laisser des commentaires.
-L'auteur du projet contrôle qui peut contribuer (ajouter/retirer 
-des contributeurs). Seul l'auteur d'une issue peut la réassigner.
+L'API utilise des jetons JWT. On obtient un jeton en envoyant son pseudo et son mot de passe
+à `POST /api/token/`, puis on l'ajoute à chaque requête dans l'en-tête
+`Authorization: Bearer <access>`. Le jeton d'accès expire après 5 minutes ;
+`POST /api/token/refresh/` en fournit un nouveau à partir du jeton de rafraîchissement (1 jour).
 
-## Données sensibles
----
-- Identifiants et emails des utilisateurs
-- Contenu des issues et commentaires (peut contenir du code)
-- Métadonnées de timing (qui fait quoi, quand)
+## Points de terminaison
 
-## Risques OWASP
----
-- A01 : un développeur voit les issues d'un projet où il n'est
-  pas contributeur
-- A04 : les utilisateurs doivent avoir 15 ans (conception RGPD)
-- A05 : les erreurs de l'API exposent la configuration (DEBUG = True)
-- A07 : les tokens JWT de longue durée peuvent être volés
+| Adresse | Méthodes | Qui peut |
+|---|---|---|
+| `/api/users/` | POST | tout le monde (inscription) |
+| `/api/users/` et `/api/users/{id}/` | GET, PUT, PATCH, DELETE | l'utilisateur, sur son propre compte uniquement |
+| `/api/projects/` | GET, POST | utilisateur connecté (ne voit que ses projets) |
+| `/api/projects/{id}/` | GET | contributeurs |
+| `/api/projects/{id}/` | PUT, PATCH, DELETE | auteur du projet |
+| `/api/projects/{id}/contributors/` | GET | contributeurs |
+| `/api/projects/{id}/contributors/` | POST | auteur du projet |
+| `/api/projects/{id}/contributors/{id}/` | DELETE | auteur du projet |
+| `/api/projects/{id}/issues/` | GET, POST | contributeurs |
+| `/api/projects/{id}/issues/{id}/` | PUT, PATCH, DELETE | auteur de l'issue |
+| `/api/projects/{id}/issues/{id}/comments/` | GET, POST | contributeurs |
+| `/api/projects/{id}/issues/{id}/comments/{id}/` | PUT, PATCH, DELETE | auteur du commentaire |
 
+Les listes sont paginées par 10 (`?limit=` et `?offset=` pour naviguer).
 
-## RGPD
+## Choix de conception
 
-Suppression d’un compte (droit à l’oubli). Les projets d’un utilisateur sont supprimés avec lui (CASCADE). En revanche, ses issues et ses commentaires sont conservés sans auteur (SET_NULL), pour que les autres contributeurs ne perdent ni le suivi des bugs ni leurs propres commentaires. Une issue assignée à un utilisateur supprimé redevient non assignée.
+- **Ajout d'un contributeur par pseudo.** Un utilisateur ne voit que son propre compte.
+  L'auteur d'un projet ajoute donc un contributeur en indiquant son pseudo
+  (`{"username": "bob"}`), que les membres d'une équipe s'échangent entre eux.
+- **L'auteur d'un projet en devient automatiquement contributeur.**
+- **Une issue ne peut être assignée qu'à un contributeur du projet.**
+- **Cacher plutôt qu'interdire.** Une ressource d'un projet dont on n'est pas contributeur
+  renvoie `404`, pour ne pas révéler son existence. Une action interdite sur une ressource
+  visible renvoie `403`.
+
+## Sécurité et RGPD
+
+- **Âge minimal** : l'inscription est refusée en dessous de 15 ans.
+- **Consentements** : `can_be_contacted` et `can_data_be_shared` sont désactivés par défaut.
+- **Mots de passe** : hachés par Django (PBKDF2), jamais renvoyés par l'API.
+- **Droit à l'oubli** : la suppression d'un compte supprime ses projets. Ses issues et
+  commentaires sont conservés sans auteur, pour que les autres contributeurs ne perdent
+  ni le suivi des bugs ni leurs propres commentaires.
+- **Contrôle d'accès (OWASP A01)** : filtrage des données visibles et permission réservée
+  à l'auteur pour les modifications.
+- **Configuration (OWASP A05)** : `DEBUG` désactivé et clé secrète hors du code, dans `.env`.
+- **Authentification (OWASP A07)** : jeton d'accès de courte durée.
+- **Dépendances (OWASP A06)** : versions figées dans `Pipfile.lock`.
+
+## Tests
+
+Le script `scenario_issues.sh` rejoue un scénario complet et affiche, pour chaque requête,
+le code HTTP attendu et le code obtenu :
+
+```bash
+./scenario_issues.sh
+```
