@@ -1,11 +1,13 @@
-from django.shortcuts import render
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.permissions import IsAuthenticated
 from .models import Project, Contributor
 from .serializers import ProjectSerializer
+from .permissions import IsAuthorOrReadOnly
 
 
 class ProjectViewSet(ModelViewSet):
     serializer_class = ProjectSerializer
+    permission_classes = [IsAuthenticated, IsAuthorOrReadOnly]
 
     def get_queryset(self):
         return Project.objects.filter(contributors__user=self.request.user)
