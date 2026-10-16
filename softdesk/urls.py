@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-
+from projects.views import ProjectViewSet, ContributorViewSet, IssueViewSet, CommentViewSet
 from users.views import UserViewSet
 from projects.views import ProjectViewSet, ContributorViewSet
 
@@ -29,6 +29,17 @@ router.register(
     r'projects/(?P<project_pk>[^/.]+)/contributors',
     ContributorViewSet,
     basename='project-contributors',
+)
+router.register(
+    r'projects/(?P<project_pk>[^/.]+)/issues',
+    IssueViewSet,
+    basename='project-issues',
+)
+
+router.register(
+    r'projects/(?P<project_pk>[^/.]+)/issues/(?P<issue_pk>[^/.]+)/comments',
+    CommentViewSet,
+    basename='issue-comments',
 )
 
 urlpatterns = [
