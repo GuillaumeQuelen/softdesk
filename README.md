@@ -58,6 +58,7 @@ L'API utilise des jetons JWT. On obtient un jeton en envoyant son pseudo et son 
 | `/api/projects/{id}/issues/{id}/` | PUT, PATCH, DELETE | auteur de l'issue |
 | `/api/projects/{id}/issues/{id}/comments/` | GET, POST | contributeurs |
 | `/api/projects/{id}/issues/{id}/comments/{id}/` | PUT, PATCH, DELETE | auteur du commentaire |
+| `/api/token/blacklist/` | POST | Se déconnecter : révoque le refresh token (envoyé dans le corps) |
 
 Les listes sont paginées par 10 (`?limit=` et `?offset=` pour naviguer).
 
@@ -85,14 +86,24 @@ Les listes sont paginées par 10 (`?limit=` et `?offset=` pour naviguer).
 - **Configuration (OWASP A05)** : `DEBUG` désactivé et clé secrète hors du code, dans `.env`.
 - **Authentification (OWASP A07)** : jeton d'accès de courte durée.
 - **Dépendances (OWASP A06)** : versions figées dans `Pipfile.lock`.
+- Mots de passe vérifiés par les validateurs de Django, puis hachés (PBKDF2)
+- Déconnexion : liste noire des refresh tokens, avec rotation
+- Limitation des requêtes : 30 par minute sans token, 300 connecté (429 au-delà)
+- Green code : `select_related` sur les issues et commentaires
 
 ## Tests
 
-Le script `scenario_issues.sh` rejoue un scénario complet et affiche, pour chaque requête,
-le code HTTP attendu et le code obtenu :
+### Tests automatisés (sans serveur)
 
-```bash
-./scenario_issues.sh
+    pipenv run python manage.py test
+
+- `users/tests.py` : règle des 15 ans, déconnexion (refresh refusé après révocation)
+- `projects/tests.py` : assignation, permissions (403, 404), pagination, nombre de requêtes constant
+
+### Scénarios de démonstration (serveur lancé)
+
+    ./scenario_issues.sh     # les 12 étapes du cahier des charges
+    ./scenario_logout.sh     # connexion, déconnexion, refresh refusé
 ```
 Vérifier la qualité du code :
 
