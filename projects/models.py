@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 import uuid
 
+
 class Project(models.Model):
     TYPES = [
         ('BACKEND', 'Back-end'),
@@ -20,6 +21,7 @@ class Project(models.Model):
     )
     created_time = models.DateTimeField(auto_now_add=True)
 
+
 class Contributor(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     project = models.ForeignKey(Project, on_delete=models.CASCADE,
@@ -31,6 +33,7 @@ class Contributor(models.Model):
             models.UniqueConstraint(fields=['user', 'project'],
                                     name='unique_contributor')
         ]
+
 
 class Issue(models.Model):
     PRIORITIES = [('LOW', 'Low'), ('MEDIUM', 'Medium'), ('HIGH', 'High')]
@@ -53,6 +56,7 @@ class Issue(models.Model):
                                     null=True, blank=True,
                                     related_name='issues_assigned')
     created_time = models.DateTimeField(auto_now_add=True)
+
 
 class Comment(models.Model):
     description = models.TextField()

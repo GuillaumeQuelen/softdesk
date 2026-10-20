@@ -15,11 +15,13 @@ class ContributorSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'created_time']
         read_only_fields = ['id', 'created_time']
 
+
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ['id', 'title', 'description', 'type', 'author', 'created_time']
         read_only_fields = ['id', 'author', 'created_time']
+
 
 class IssueSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(slug_field='username', read_only=True)

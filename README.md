@@ -94,3 +94,9 @@ le code HTTP attendu et le code obtenu :
 ```bash
 ./scenario_issues.sh
 ```
+Vérifier la qualité du code :
+
+```bash
+pipenv install --dev
+pipenv run flake8
+```

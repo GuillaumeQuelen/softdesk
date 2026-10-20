@@ -21,7 +21,7 @@ class ProjectViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsAuthorOrReadOnly]
 
     def get_queryset(self):
-        return Project.objects.filter(contributors__user=self.request.user)
+        return Project.objects.filter(contributors__user=self.request.user).order_by('id')
 
     def perform_create(self, serializer):
         project = serializer.save(author=self.request.user)
@@ -34,7 +34,7 @@ class ContributorViewSet(ProjectNestedMixin, ModelViewSet):
     http_method_names = ['get', 'post', 'delete']
 
     def get_queryset(self):
-        return Contributor.objects.filter(project=self.get_project())
+        return Contributor.objects.filter(project=self.get_project()).order_by('id')
 
     def perform_create(self, serializer):
         project = self.get_project()
@@ -57,9 +57,6 @@ class IssueViewSet(ProjectNestedMixin, ModelViewSet):
     serializer_class = IssueSerializer
     permission_classes = [IsAuthenticated, IsAuthorOrReadOnly]
 
-    def get_queryset(self):
-        return Issue.objects.filter(project=self.get_project())
-
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['project'] = self.get_project()
@@ -67,6 +64,14 @@ class IssueViewSet(ProjectNestedMixin, ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user, project=self.get_project())
+
+    def get_queryset(self):
+        return (
+            Issue.objects.filter(project=self.get_project())
+            .select_related('author', 'assigned_to')
+            .order_by('id')
+        )
+
 
 class CommentViewSet(ProjectNestedMixin, ModelViewSet):
     serializer_class = CommentSerializer
@@ -77,8 +82,12 @@ class CommentViewSet(ProjectNestedMixin, ModelViewSet):
             Issue, pk=self.kwargs['issue_pk'], project=self.get_project()
         )
 
-    def get_queryset(self):
-        return Comment.objects.filter(issue=self.get_issue())
-
     def perform_create(self, serializer):
         serializer.save(author=self.request.user, issue=self.get_issue())
+
+    def get_queryset(self):
+        return (
+            Comment.objects.filter(issue=self.get_issue())
+            .select_related('author')
+            .order_by('id')
+        )
